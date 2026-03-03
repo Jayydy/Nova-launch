@@ -122,6 +122,7 @@ pub struct FeeUpdate {
 /// * `BurnCount(u32)` - Number of burns for token
 /// * `TokenByAddress(Address)` - Token info lookup by address
 /// * `Paused` - Contract pause state
+/// * `AccruedFees` - Total fees accrued awaiting collection
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum DataKey {
@@ -135,6 +136,7 @@ pub enum DataKey {
     BurnCount(u32),
     TokenByAddress(Address),
     Paused,
+    AccruedFees,
 }
 
 /// Contract error codes

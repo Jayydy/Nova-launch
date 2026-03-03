@@ -1,6 +1,6 @@
 use soroban_sdk::{Address, Env};
 
-use crate::types::{DataKey, FactoryState, TokenInfo, BurnRecord};
+use crate::types::{DataKey, FactoryState, TokenInfo};
 
 // ============================================================
 // Storage Functions - Burn Tracking
@@ -659,4 +659,22 @@ pub fn get_admin_state(env: &Env) -> (Address, bool) {
     let admin = get_admin(env);
     let paused = is_paused(env);
     (admin, paused)
+}
+
+// Fee accrual management
+pub fn get_accrued_fees(env: &Env) -> i128 {
+    env.storage()
+        .instance()
+        .get(&DataKey::AccruedFees)
+        .unwrap_or(0)
+}
+
+pub fn add_accrued_fees(env: &Env, amount: i128) {
+    let current = get_accrued_fees(env);
+    let new_total = current.checked_add(amount).unwrap_or(current);
+    env.storage().instance().set(&DataKey::AccruedFees, &new_total);
+}
+
+pub fn reset_accrued_fees(env: &Env) {
+    env.storage().instance().set(&DataKey::AccruedFees, &0i128);
 }

@@ -107,3 +107,13 @@ pub fn emit_token_burned(env: &Env, token_address: &Address, amount: i128) {
         (amount,),
     );
 }
+
+/// Emit fees collected event
+/// 
+/// Emitted when accrued fees are transferred to treasury
+pub fn emit_fees_collected(env: &Env, amount: i128, treasury: &Address) {
+    env.events().publish(
+        (symbol_short!("fee_coll"),),
+        (amount, treasury),
+    );
+}

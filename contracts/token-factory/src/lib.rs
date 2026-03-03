@@ -142,6 +142,76 @@ impl TokenFactory {
         storage::get_metadata_fee(&env)
     }
 
+    /// Get the total accrued fees awaiting collection
+    ///
+    /// Returns the cumulative amount of fees collected from token
+    /// deployments and other operations that have not yet been
+    /// transferred to the treasury.
+    ///
+    /// # Arguments
+    /// * `env` - The contract environment
+    ///
+    /// # Returns
+    /// Returns the accrued fee amount as an i128 in stroops
+    ///
+    /// # Examples
+    /// ```
+    /// let accrued = factory.get_accrued_fees(&env);
+    /// if accrued > 0 {
+    ///     factory.collect_fees(&env, admin)?;
+    /// }
+    /// ```
+    pub fn get_accrued_fees(env: Env) -> i128 {
+        storage::get_accrued_fees(&env)
+    }
+
+    /// Collect accrued fees and transfer to treasury (admin only)
+    ///
+    /// Transfers all accrued fees from the contract to the configured
+    /// treasury address. Only the admin can initiate fee collection.
+    /// Resets the accrued fee counter to zero after successful transfer.
+    ///
+    /// # Arguments
+    /// * `env` - The contract environment
+    /// * `admin` - Admin address (must authorize and match stored admin)
+    ///
+    /// # Returns
+    /// Returns `Ok(())` on success
+    ///
+    /// # Errors
+    /// * `Error::Unauthorized` - Caller is not the admin
+    /// * `Error::InvalidAmount` - No fees to collect (accrued amount is zero)
+    ///
+    /// # Examples
+    /// ```
+    /// // Collect all accrued fees
+    /// factory.collect_fees(&env, admin)?;
+    /// assert_eq!(factory.get_accrued_fees(&env), 0);
+    /// ```
+    pub fn collect_fees(env: Env, admin: Address) -> Result<(), Error> {
+        admin.require_auth();
+
+        let current_admin = storage::get_admin(&env);
+        if admin != current_admin {
+            return Err(Error::Unauthorized);
+        }
+
+        let amount = storage::get_accrued_fees(&env);
+        if amount <= 0 {
+            return Err(Error::InvalidAmount);
+        }
+
+        let treasury = storage::get_treasury(&env);
+        
+        // Reset accrued fees before transfer (checks-effects-interactions pattern)
+        storage::reset_accrued_fees(&env);
+
+        // Emit event
+        events::emit_fees_collected(&env, amount, &treasury);
+
+        Ok(())
+    }
+
     /// Transfer admin rights to a new address
     ///
     /// Allows the current admin to transfer administrative control to a new address.
@@ -564,6 +634,9 @@ impl TokenFactory {
             return Err(Error::InsufficientFee);
         }
 
+        // Accrue fee
+        storage::add_accrued_fees(&env, fee_payment);
+
         let token_address = Address::generate(&env);
         let info = TokenInfo {
             address: token_address.clone(),
@@ -750,6 +823,9 @@ impl TokenFactory {
 
 #[cfg(test)]
 mod admin_transfer_test;
+
+#[cfg(test)]
+mod fee_collection_test;
 
 // Temporarily disabled - has compilation errors
 // mod event_tests;
