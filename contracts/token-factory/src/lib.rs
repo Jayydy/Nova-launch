@@ -6,6 +6,7 @@ mod burn;
 mod types;
 mod validation;
 mod timelock;
+mod pagination;
 
 use soroban_sdk::{contract, contractimpl, Address, Env, String};
 use types::{ContractMetadata, Error, FactoryState, TokenInfo};
@@ -861,6 +862,76 @@ impl TokenFactory {
         timelock::get_timelock_config(&env)
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // Pagination Functions
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /// Get tokens created by a specific address with pagination
+    ///
+    /// Returns a paginated list of tokens created by the specified address.
+    /// Results are ordered by token creation order (token index).
+    /// Useful for explorer and dashboard interfaces.
+    ///
+    /// # Arguments
+    /// * `env` - The contract environment
+    /// * `creator` - Address of the token creator
+    /// * `cursor` - Optional cursor for pagination (None = start from beginning)
+    /// * `limit` - Maximum number of tokens to return (default 20, max 100)
+    ///
+    /// # Returns
+    /// Returns `PaginatedTokens` containing:
+    /// - `tokens`: Vector of TokenInfo for this page
+    /// - `cursor`: Optional cursor for next page (None = no more results)
+    ///
+    /// # Cursor Semantics
+    /// - Cursors are deterministic and stable across calls
+    /// - Empty cursor (None) starts from the beginning
+    /// - Returned cursor of None indicates end of results
+    /// - Cursors contain the next position in the creator's token list
+    ///
+    /// # Examples
+    /// ```
+    /// // First page
+    /// let page1 = factory.get_tokens_by_creator(&env, creator, None, Some(20))?;
+    /// 
+    /// // Next page
+    /// if let Some(cursor) = page1.cursor {
+    ///     let page2 = factory.get_tokens_by_creator(&env, creator, Some(cursor), Some(20))?;
+    /// }
+    /// 
+    /// // Get total count
+    /// let total = factory.get_creator_token_count(&env, creator);
+    /// ```
+    pub fn get_tokens_by_creator(
+        env: Env,
+        creator: Address,
+        cursor: Option<types::PaginationCursor>,
+        limit: Option<u32>,
+    ) -> Result<types::PaginatedTokens, Error> {
+        pagination::get_tokens_by_creator(&env, &creator, cursor, limit)
+    }
+
+    /// Get the total number of tokens created by an address
+    ///
+    /// Returns the count without fetching the actual token data.
+    /// Useful for displaying total counts in UIs.
+    ///
+    /// # Arguments
+    /// * `env` - The contract environment
+    /// * `creator` - Address of the token creator
+    ///
+    /// # Returns
+    /// Returns the number of tokens created by this address
+    ///
+    /// # Examples
+    /// ```
+    /// let count = factory.get_creator_token_count(&env, creator);
+    /// log!("Creator has deployed {} tokens", count);
+    /// ```
+    pub fn get_creator_token_count(env: Env, creator: Address) -> u32 {
+        pagination::get_creator_token_count(&env, &creator)
+    }
+
 }
 
 // Temporarily disabled - requires create_token implementation
@@ -924,3 +995,6 @@ mod gas_benchmark_comprehensive;
 
 #[cfg(test)]
 mod timelock_test;
+
+#[cfg(test)]
+mod pagination_integration_test;

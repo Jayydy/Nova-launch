@@ -70,6 +70,9 @@ pub fn get_token_info(env: &Env, index: u32) -> Option<TokenInfo> {
 pub fn set_token_info(env: &Env, index: u32, info: &TokenInfo) {
     env.storage().instance().set(&DataKey::Token(index), info);
     
+    // Index by creator for pagination
+    add_creator_token(env, &info.creator, index);
+    
     // Emit token registered event
     crate::events::emit_token_registered(env, &info.address, &info.creator);
 }
@@ -703,4 +706,44 @@ pub fn remove_pending_change(env: &Env, change_id: u64) {
     env.storage()
         .persistent()
         .remove(&DataKey::PendingChange(change_id));
+}
+
+
+// ── Creator indexing functions ─────────────────────────────
+
+/// Add a token index to a creator's token list
+pub fn add_creator_token(env: &Env, creator: &Address, token_index: u32) {
+    let mut tokens: soroban_sdk::Vec<u32> = env
+        .storage()
+        .persistent()
+        .get(&DataKey::CreatorTokens(creator.clone()))
+        .unwrap_or(soroban_sdk::Vec::new(env));
+    
+    tokens.push_back(token_index);
+    
+    env.storage()
+        .persistent()
+        .set(&DataKey::CreatorTokens(creator.clone()), &tokens);
+    
+    // Update count
+    let count = tokens.len();
+    env.storage()
+        .persistent()
+        .set(&DataKey::CreatorTokenCount(creator.clone()), &count);
+}
+
+/// Get all token indices for a creator
+pub fn get_creator_tokens(env: &Env, creator: &Address) -> soroban_sdk::Vec<u32> {
+    env.storage()
+        .persistent()
+        .get(&DataKey::CreatorTokens(creator.clone()))
+        .unwrap_or(soroban_sdk::Vec::new(env))
+}
+
+/// Get the number of tokens created by an address
+pub fn get_creator_token_count(env: &Env, creator: &Address) -> u32 {
+    env.storage()
+        .persistent()
+        .get(&DataKey::CreatorTokenCount(creator.clone()))
+        .unwrap_or(0)
 }

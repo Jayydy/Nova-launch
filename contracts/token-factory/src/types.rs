@@ -127,6 +127,8 @@ pub struct FeeUpdate {
 /// * `TimelockConfig` - Timelock configuration
 /// * `PendingChange(u64)` - Pending change by ID
 /// * `NextChangeId` - Next available change ID
+/// * `CreatorTokens(Address)` - Vector of token indices for a creator
+/// * `CreatorTokenCount(Address)` - Number of tokens created by address
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum DataKey {
@@ -143,6 +145,8 @@ pub enum DataKey {
     TimelockConfig,
     PendingChange(u64),
     NextChangeId,
+    CreatorTokens(Address),
+    CreatorTokenCount(Address),
 }
 
 /// Contract error codes
@@ -249,4 +253,31 @@ pub struct PendingChange {
     pub metadata_fee: Option<i128>,
     pub paused: Option<bool>,
     pub treasury: Option<Address>,
+}
+
+/// Pagination cursor for token queries
+///
+/// Represents the position in a paginated result set.
+/// Uses token index as the cursor for deterministic ordering.
+///
+/// # Fields
+/// * `next_index` - The next token index to fetch (None = end of results)
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PaginationCursor {
+    pub next_index: Option<u32>,
+}
+
+/// Paginated token result
+///
+/// Contains a page of tokens and a cursor for fetching the next page.
+///
+/// # Fields
+/// * `tokens` - Vector of token info for this page
+/// * `cursor` - Cursor for next page (None = no more results)
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PaginatedTokens {
+    pub tokens: soroban_sdk::Vec<TokenInfo>,
+    pub cursor: Option<PaginationCursor>,
 }
