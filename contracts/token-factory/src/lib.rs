@@ -608,6 +608,9 @@ impl TokenFactory {
     if storage::is_token_paused(&env, index) {   // ADD
         return Err(Error::TokenPaused);          // ADD
     }                                            // ADD
+
+    if info.metadata_uri.is_some() {
+        return Err(Error::MetadataAlreadySet);
     /// Get token information by contract address
     ///
     /// Retrieves complete information about a token using its

@@ -84,6 +84,7 @@ pub struct TokenInfo {
     pub burn_count: u32,
     pub metadata_uri: Option<String>,
     pub created_at: u64,
+    pub is_paused: bool,   // NEW — token-level pause flag
     pub is_paused: bool,
 }
 
@@ -161,6 +162,7 @@ pub enum DataKey {
     Token(u32),
     Balance(u32, Address),
     BurnCount(u32),
+    TokenPaused(u32),      // NEW — token_index -> bool
     TokenPaused(u32),
     TotalBurned(u32),   // NEW — cumulative burned amount per token
     TokenByAddress(Address),
@@ -220,6 +222,8 @@ pub enum Error {
     InsufficientBalance = 7,
     ArithmeticError     = 8,
     BatchTooLarge       = 9,
+    TokenPaused         = 10,  // NEW
+}
     TokenPaused         = 10,
     InsufficientFee = 1,
     Unauthorized = 2,
