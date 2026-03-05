@@ -183,8 +183,8 @@ pub enum DataKey {
     WithdrawalPeriod,
     AllowedRecipient(Address),
     StreamCount,
-    Stream(u32),
-    StreamByCreator(Address, u32),
+    Stream(u64),
+    NextStreamId,
 }
 
 /// Contract error codes
@@ -262,6 +262,15 @@ pub enum Error {
     ContractPaused = 14,
     InvalidTokenParams = 15,
     BatchCreationFailed = 16,
+    TimelockNotExpired = 17,
+    ChangeAlreadyExecuted = 18,
+    MaxSupplyExceeded = 19,
+    InvalidMaxSupply = 20,
+    WithdrawalCapExceeded = 21,
+    RecipientNotAllowed = 22,
+    StreamNotFound = 23,
+    StreamCancelled = 24,
+    NothingToClaim = 25,
 }
 
 /// Type of pending change
@@ -361,5 +370,71 @@ pub struct TreasuryPolicy {
 pub struct WithdrawalPeriod {
     pub period_start: u64,
     pub amount_withdrawn: i128,
+}
+
+/// Stream information
+///
+/// Contains all data for a payment stream including vesting schedule.
+///
+/// # Fields
+/// * `id` - Unique stream identifier
+/// * `creator` - Address that created the stream
+/// * `recipient` - Address that receives vested tokens
+/// * `token_index` - Index of the token being streamed
+/// * `total_amount` - Total amount to be vested
+/// * `claimed_amount` - Amount already claimed by recipient
+/// * `start_time` - Stream start timestamp
+/// * `end_time` - Stream end timestamp (full vesting)
+/// * `cliff_time` - Cliff timestamp (no claims before this)
+/// * `cancelled` - Whether the stream has been cancelled
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct StreamInfo {
+    pub id: u64,
+    pub creator: Address,
+    pub recipient: Address,
+    pub token_index: u32,
+    pub total_amount: i128,
+    pub claimed_amount: i128,
+    pub start_time: u64,
+    pub end_time: u64,
+    pub cliff_time: u64,
+    pub cancelled: bool,
+}
+
+/// Stream creation parameters
+///
+/// Parameters for creating a new payment stream.
+///
+/// # Fields
+/// * `recipient` - Address that will receive vested tokens
+/// * `token_index` - Index of the token to stream
+/// * `total_amount` - Total amount to vest
+/// * `start_time` - Stream start timestamp
+/// * `end_time` - Stream end timestamp
+/// * `cliff_time` - Cliff timestamp
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct StreamParams {
+    pub recipient: Address,
+    pub token_index: u32,
+    pub total_amount: i128,
+    pub start_time: u64,
+    pub end_time: u64,
+    pub cliff_time: u64,
+}
+
+/// Timelock configuration
+///
+/// Defines the delay period for timelocked operations.
+///
+/// # Fields
+/// * `delay_seconds` - Delay in seconds before changes can be executed
+/// * `enabled` - Whether timelock is enabled
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TimelockConfig {
+    pub delay_seconds: u64,
+    pub enabled: bool,
 }
 
