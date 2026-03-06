@@ -144,7 +144,7 @@ pub fn emit_token_created(
 /// The ledger automatically records transaction timestamps.
 pub fn emit_admin_transfer(env: &Env, old_admin: &Address, new_admin: &Address) {
     env.events().publish(
-        (symbol_short!("adm_xf_v1"),),
+        (symbol_short!("adm_xfer"),),
         (old_admin, new_admin),
     );
 }
@@ -202,7 +202,7 @@ pub fn emit_unpause(env: &Env, admin: &Address) {
 /// **Schema Stability**: This schema is immutable. Any changes require a new version.
 pub fn emit_fees_updated(env: &Env, base_fee: i128, metadata_fee: i128) {
     env.events().publish(
-        (symbol_short!("fee_up_v1"),),
+        (symbol_short!("fees_upd"),),
         (base_fee, metadata_fee),
     );
 }
@@ -232,7 +232,7 @@ pub fn emit_admin_burn(
     amount: i128,
 ) {
     env.events().publish(
-        (symbol_short!("adm_br_v1"), token_address.clone()),
+        (symbol_short!("adm_burn"), token_address.clone()),
         (admin, from, amount),
     );
 }
@@ -280,7 +280,7 @@ pub fn emit_clawback_toggled(
 /// Used when multiple tokens are burned in a batch operation
 pub fn emit_token_burned(env: &Env, token_address: &Address, amount: i128) {
     env.events().publish(
-        (symbol_short!("tok_br_v1"), token_address.clone()),
+        (symbol_short!("tkn_burn"), token_address.clone()),
         (amount,),
     );
 }
@@ -407,12 +407,11 @@ pub fn emit_treasury_policy_updated(env: &Env, daily_cap: i128, allowlist_enable
 /// 
 /// **Schema Stability**: This schema is immutable. Any changes require a new version.
 /// 
-/// Emitted when stream metadata is successfully updated
-pub fn emit_stream_metadata_updated(
+/// Published when a new token is successfully created
+pub fn emit_token_created(
     env: &Env,
-    stream_id: u32,
-    updater: &Address,
-    has_metadata: bool,
+    token_address: &Address,
+    creator: &Address,
 ) {
     env.events().publish(
         (symbol_short!("strm_md"), stream_id),
@@ -436,19 +435,24 @@ pub fn emit_stream_metadata_updated(
 /// - has_metadata: bool - Whether metadata is present
 /// 
 /// **Schema Stability**: This schema is immutable. Any changes require a new version.
+        (symbol_short!("tkn_crtd"), token_address.clone()),
+        creator,
+    );
+}
+
+/// Emit batch tokens created event
 /// 
-/// Emitted when a new stream is created
-pub fn emit_stream_created(
+/// Published when multiple tokens are created in a batch operation
+pub fn emit_batch_tokens_created(
     env: &Env,
-    stream_id: u32,
     creator: &Address,
-    recipient: &Address,
-    amount: i128,
-    has_metadata: bool,
+    count: u32,
 ) {
     env.events().publish(
         (symbol_short!("strm_crt"), stream_id),
         (creator, recipient, amount, has_metadata),
+        (symbol_short!("batch_tkn"),),
+        (creator, count),
     );
 }
 
