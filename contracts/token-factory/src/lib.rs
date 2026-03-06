@@ -16,6 +16,10 @@ mod mint;
 mod treasury;
 mod vesting;
 mod stream_types;
+mod differential_engine;
+mod stream_types;
+mod token_creation;
+mod proposal_state_machine;
 // #[cfg(test)]
 // mod differential_engine;
 #[cfg(test)]
