@@ -19,6 +19,7 @@ mod stream_types;
 mod differential_engine;
 mod stream_types;
 mod token_creation;
+mod proposal_state_machine;
 #[cfg(test)]
 mod test_helpers;
 #[cfg(test)]
@@ -2052,3 +2053,6 @@ mod batch_claim_test;
 
 #[cfg(test)]
 mod governance_error_test;
+
+#[cfg(test)]
+mod proposal_state_machine_test;

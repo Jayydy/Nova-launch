@@ -216,6 +216,9 @@ pub enum DataKey {
 /// * `ProposalNotExecutable` - Proposal cannot be executed in current state
 /// * `QuorumNotMet` - Proposal did not reach minimum quorum threshold
 /// * `AlreadyExecuted` - Proposal has already been executed
+/// * `InvalidStateTransition` - Attempted state transition is not allowed
+/// * `ProposalInTerminalState` - Cannot modify proposal in terminal state
+/// * `ProposalCancelled` - Proposal has been cancelled
 ///
 /// # Examples
 /// ```
@@ -268,6 +271,9 @@ pub enum Error {
     ProposalNotExecutable = 40,
     QuorumNotMet = 41,
     AlreadyExecuted = 42,
+    InvalidStateTransition = 43,
+    ProposalInTerminalState = 44,
+    ProposalCancelled = 45,
 }
 
 /// Type of pending change
@@ -307,6 +313,40 @@ pub enum VoteChoice {
 
 /// Governance proposal
 ///
+/// Proposal lifecycle state
+///
+/// Defines the explicit state machine for proposal lifecycle.
+/// Transitions follow strict rules to prevent invalid state changes.
+///
+/// # State Transitions
+/// ```text
+/// Created -> Active -> Succeeded -> Queued -> Executed (terminal)
+///                   -> Defeated (terminal)
+///                   -> Expired (terminal)
+/// ```
+///
+/// # States
+/// * `Created` - Proposal created, voting not yet started
+/// * `Active` - Voting period is active
+/// * `Succeeded` - Voting ended, proposal passed (quorum met, more for than against)
+/// * `Defeated` - Voting ended, proposal failed (quorum not met or more against)
+/// * `Queued` - Proposal succeeded and queued for execution after timelock
+/// * `Executed` - Proposal has been executed (terminal state)
+/// * `Expired` - Proposal expired before execution (terminal state)
+/// * `Cancelled` - Proposal was cancelled by proposer or admin (terminal state)
+#[contracttype]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ProposalState {
+    Created = 0,
+    Active = 1,
+    Succeeded = 2,
+    Defeated = 3,
+    Queued = 4,
+    Executed = 5,
+    Expired = 6,
+    Cancelled = 7,
+}
+
 /// Represents a proposal for a governance action with voting period.
 ///
 /// # Fields
@@ -321,6 +361,9 @@ pub enum VoteChoice {
 /// * `votes_for` - Number of votes in favor
 /// * `votes_against` - Number of votes against
 /// * `votes_abstain` - Number of abstain votes
+/// * `state` - Current lifecycle state of the proposal
+/// * `executed_at` - Timestamp when proposal was executed (if applicable)
+/// * `cancelled_at` - Timestamp when proposal was cancelled (if applicable)
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Proposal {
@@ -335,6 +378,9 @@ pub struct Proposal {
     pub votes_for: u32,
     pub votes_against: u32,
     pub votes_abstain: u32,
+    pub state: ProposalState,
+    pub executed_at: Option<u64>,
+    pub cancelled_at: Option<u64>,
 }
 
 /// Pending change awaiting timelock expiry
