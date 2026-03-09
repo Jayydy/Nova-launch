@@ -331,6 +331,8 @@ pub enum Error {
     ExceedsStepLimit = 45,
     InsufficientBudget = 46,
     SlippageExceeded = 47,
+    ReconciliationFailed = 48,
+    InvariantViolation = 49,
 }
 
 /// Type of pending change

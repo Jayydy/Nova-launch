@@ -21,6 +21,16 @@ pub struct ExecutionResult {
     pub spent: i128,
     pub bought: i128,
     pub burned: i128,
+    pub reconciled: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[soroban_sdk::contracttype]
+pub struct ReconciliationReport {
+    pub expected_burn: i128,
+    pub realized_burn: i128,
+    pub delta: i128,
+    pub reconciled: bool,
 }
 
 #[contract]
@@ -69,23 +79,48 @@ impl BuybackContract {
             return Err(Error::SlippageExceeded);
         }
 
-        // Burn tokens (in production, call token contract)
-        burn_tokens(&env, &campaign.token_address, tokens_received)?;
+        // Burn tokens and get realized amount
+        let realized_burn = burn_tokens(&env, &campaign.token_address, tokens_received)?;
+
+        // Reconciliation: expected vs realized
+        let reconciliation = reconcile_burn(tokens_received, realized_burn)?;
+        
+        if !reconciliation.reconciled {
+            return Err(Error::ReconciliationFailed);
+        }
+
+        // Invariant checks before update
+        check_monotonic_invariants(&campaign, quote_amount, realized_burn)?;
 
         // Update campaign atomically
-        campaign.spent = campaign.spent.checked_add(quote_amount)
+        let new_spent = campaign.spent.checked_add(quote_amount)
             .ok_or(Error::ArithmeticError)?;
-        campaign.tokens_bought = campaign.tokens_bought.checked_add(tokens_received)
+        let new_bought = campaign.tokens_bought.checked_add(tokens_received)
             .ok_or(Error::ArithmeticError)?;
-        campaign.tokens_burned = campaign.tokens_burned.checked_add(tokens_received)
+        let new_burned = campaign.tokens_burned.checked_add(realized_burn)
             .ok_or(Error::ArithmeticError)?;
 
+        campaign.spent = new_spent;
+        campaign.tokens_bought = new_bought;
+        campaign.tokens_burned = new_burned;
+
         env.storage().persistent().set(&key, &campaign);
+
+        // Emit settlement event
+        emit_buyback_step_settled(
+            &env,
+            campaign_id,
+            quote_amount,
+            tokens_received,
+            realized_burn,
+            reconciliation.delta,
+        );
 
         Ok(ExecutionResult {
             spent: quote_amount,
             bought: tokens_received,
-            burned: tokens_received,
+            burned: realized_burn,
+            reconciled: true,
         })
     }
 
@@ -147,12 +182,79 @@ fn simulate_swap(env: &Env, quote_amount: i128, min_out: i128) -> Result<i128, E
     Ok(tokens)
 }
 
-fn burn_tokens(env: &Env, _token: &Address, amount: i128) -> Result<(), Error> {
+fn burn_tokens(env: &Env, _token: &Address, amount: i128) -> Result<i128, Error> {
     if amount <= 0 {
         return Err(Error::InvalidBurnAmount);
     }
-    // In production: invoke token.burn()
+    // In production: invoke token.burn() and return actual burned amount
+    // For now, simulate potential rounding by returning exact amount
+    Ok(amount)
+}
+
+fn reconcile_burn(expected: i128, realized: i128) -> Result<ReconciliationReport, Error> {
+    let delta = expected.checked_sub(realized)
+        .ok_or(Error::ArithmeticError)?;
+    
+    // Allow small rounding differences (up to 1 unit)
+    let reconciled = delta.abs() <= 1;
+    
+    Ok(ReconciliationReport {
+        expected_burn: expected,
+        realized_burn: realized,
+        delta,
+        reconciled,
+    })
+}
+
+fn check_monotonic_invariants(
+    campaign: &BuybackCampaign,
+    new_spent: i128,
+    new_burned: i128,
+) -> Result<(), Error> {
+    // Spent must be monotonically increasing
+    if new_spent <= 0 {
+        return Err(Error::InvariantViolation);
+    }
+    
+    // Burned must be monotonically increasing
+    if new_burned <= 0 {
+        return Err(Error::InvariantViolation);
+    }
+    
+    // New totals must not decrease
+    let next_spent = campaign.spent.checked_add(new_spent)
+        .ok_or(Error::ArithmeticError)?;
+    let next_burned = campaign.tokens_burned.checked_add(new_burned)
+        .ok_or(Error::ArithmeticError)?;
+    
+    if next_spent < campaign.spent {
+        return Err(Error::InvariantViolation);
+    }
+    
+    if next_burned < campaign.tokens_burned {
+        return Err(Error::InvariantViolation);
+    }
+    
+    // Spent must not exceed budget
+    if next_spent > campaign.total_budget {
+        return Err(Error::InvariantViolation);
+    }
+    
     Ok(())
+}
+
+fn emit_buyback_step_settled(
+    env: &Env,
+    campaign_id: u64,
+    spent: i128,
+    bought: i128,
+    burned: i128,
+    delta: i128,
+) {
+    env.events().publish(
+        (soroban_sdk::symbol_short!("buyback"), campaign_id),
+        (spent, bought, burned, delta),
+    );
 }
 
 fn calculate_min_with_slippage(amount: i128, slippage_bps: u32) -> Result<i128, Error> {
@@ -274,6 +376,7 @@ mod tests {
             assert_eq!(exec.spent, 50_000);
             assert_eq!(exec.bought, 5_000_000); // 50k * 100
             assert_eq!(exec.burned, 5_000_000);
+            assert!(exec.reconciled);
 
             let campaign = BuybackContract::get_campaign(env.clone(), 1).unwrap();
             assert_eq!(campaign.spent, 50_000);
@@ -429,5 +532,103 @@ mod tests {
             let campaign_after = BuybackContract::get_campaign(env.clone(), 1).unwrap();
             assert_eq!(campaign_before, campaign_after);
         });
+    }
+
+    #[test]
+    fn test_reconciliation_exact_match() {
+        let report = reconcile_burn(1_000_000, 1_000_000).unwrap();
+        assert_eq!(report.expected_burn, 1_000_000);
+        assert_eq!(report.realized_burn, 1_000_000);
+        assert_eq!(report.delta, 0);
+        assert!(report.reconciled);
+    }
+
+    #[test]
+    fn test_reconciliation_rounding_tolerance() {
+        // 1 unit difference is acceptable
+        let report = reconcile_burn(1_000_000, 999_999).unwrap();
+        assert_eq!(report.delta, 1);
+        assert!(report.reconciled);
+
+        let report = reconcile_burn(999_999, 1_000_000).unwrap();
+        assert_eq!(report.delta, -1);
+        assert!(report.reconciled);
+    }
+
+    #[test]
+    fn test_reconciliation_exceeds_tolerance() {
+        // 2 units difference is not acceptable
+        let report = reconcile_burn(1_000_000, 999_998).unwrap();
+        assert_eq!(report.delta, 2);
+        assert!(!report.reconciled);
+    }
+
+    #[test]
+    fn test_monotonic_invariant_positive_amounts() {
+        let campaign = BuybackCampaign {
+            token_address: Address::generate(&Env::default()),
+            total_budget: 1_000_000,
+            spent: 100_000,
+            tokens_bought: 10_000_000,
+            tokens_burned: 10_000_000,
+            max_spend_per_step: 100_000,
+            slippage_tolerance_bps: 500,
+            active: true,
+        };
+
+        let result = check_monotonic_invariants(&campaign, 50_000, 5_000_000);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_monotonic_invariant_zero_spent() {
+        let campaign = BuybackCampaign {
+            token_address: Address::generate(&Env::default()),
+            total_budget: 1_000_000,
+            spent: 100_000,
+            tokens_bought: 10_000_000,
+            tokens_burned: 10_000_000,
+            max_spend_per_step: 100_000,
+            slippage_tolerance_bps: 500,
+            active: true,
+        };
+
+        let result = check_monotonic_invariants(&campaign, 0, 5_000_000);
+        assert_eq!(result, Err(Error::InvariantViolation));
+    }
+
+    #[test]
+    fn test_monotonic_invariant_zero_burned() {
+        let campaign = BuybackCampaign {
+            token_address: Address::generate(&Env::default()),
+            total_budget: 1_000_000,
+            spent: 100_000,
+            tokens_bought: 10_000_000,
+            tokens_burned: 10_000_000,
+            max_spend_per_step: 100_000,
+            slippage_tolerance_bps: 500,
+            active: true,
+        };
+
+        let result = check_monotonic_invariants(&campaign, 50_000, 0);
+        assert_eq!(result, Err(Error::InvariantViolation));
+    }
+
+    #[test]
+    fn test_monotonic_invariant_exceeds_budget() {
+        let campaign = BuybackCampaign {
+            token_address: Address::generate(&Env::default()),
+            total_budget: 1_000_000,
+            spent: 950_000,
+            tokens_bought: 95_000_000,
+            tokens_burned: 95_000_000,
+            max_spend_per_step: 100_000,
+            slippage_tolerance_bps: 500,
+            active: true,
+        };
+
+        // Trying to spend 100k when only 50k remains
+        let result = check_monotonic_invariants(&campaign, 100_000, 10_000_000);
+        assert_eq!(result, Err(Error::InvariantViolation));
     }
 }
