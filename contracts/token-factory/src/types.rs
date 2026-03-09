@@ -296,19 +296,19 @@ pub enum Error {
     QuorumNotMet = 39,
     ProposalNotFound = 40,
     ProposalNotQueued = 41,
-    InvalidTimeWindow = 44,
-    PayloadTooLarge = 45,
-    AlreadyVoted = 46,
-    VotingClosed = 47,
-    AddressFrozen = 48,
-    FreezeNotEnabled = 49,
-    AddressNotFrozen = 50,
-    VaultNotFound = 60,
-    VaultLocked = 61,
-    VaultAlreadyClaimed = 62,
-    VaultCancelled = 63,
-    InvalidVaultConfig = 64,
-    NothingToClaim = 65,
+    InvalidTimeWindow = 42,
+    PayloadTooLarge = 43,
+    AlreadyVoted = 44,
+    VotingClosed = 45,
+    AddressFrozen = 46,
+    FreezeNotEnabled = 47,
+    AddressNotFrozen = 48,
+    VaultNotFound = 49,
+    VaultLocked = 50,
+    VaultAlreadyClaimed = 51,
+    VaultCancelled = 52,
+    InvalidVaultConfig = 53,
+    NothingToClaim = 54,
 }
 
 /// Governance configuration
@@ -467,6 +467,22 @@ pub struct PaginatedTokens {
     pub tokens: soroban_sdk::Vec<TokenInfo>,
     pub has_more: bool,
     pub cursor: PaginationCursor,
+}
+
+/// Paginated vault result
+///
+/// Contains a page of vaults and an optional cursor for fetching the next page.
+///
+/// # Fields
+/// * `vaults` - Vector of vault records in ascending vault_id order
+/// * `next_cursor` - Cursor for next page (None = no more results)
+///   - For get_vaults_page: next vault_id to fetch
+///   - For get_vaults_by_owner: next index in owner's vault list
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VaultsPage {
+    pub vaults: soroban_sdk::Vec<Vault>,
+    pub next_cursor: Option<u64>,
 }
 
 /// Treasury withdrawal policy
