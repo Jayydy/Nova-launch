@@ -14,6 +14,7 @@ mod milestone_verification_test;
 mod error_code_stability_test;
 mod mint;
 mod pagination;
+mod payload_validation;
 mod proposal_state_machine;
 mod storage;
 mod stream_types;
@@ -28,6 +29,8 @@ mod validation;
 
 #[cfg(test)]
 mod governance_property_test;
+#[cfg(test)]
+mod payload_validation_fuzz_test;
 
 #[cfg(all(test, feature = "legacy-tests"))]
 mod stream_claim_differential_test;
