@@ -20,6 +20,7 @@ import { ErrorCode } from '../types';
 
 import { WalletService } from './wallet';
 import type { ProposalParams, VoteParams } from '../types/governance';
+import type { OnChainBuybackCampaign } from '../types/campaign';
 
 export interface TransactionDetails {
   hash: string;
@@ -216,7 +217,7 @@ export class StellarService {
     }
   }
 
-  async getCampaign(campaignId: number): Promise<any> {
+  async getBuybackCampaign(campaignId: number): Promise<OnChainBuybackCampaign> {
     if (!this.contractClient) {
       throw this.createError(
         ErrorCode.CONTRACT_ERROR,
@@ -226,7 +227,7 @@ export class StellarService {
 
     try {
       const operation = this.contractClient.call(
-        'get_campaign',
+        'get_buyback_campaign',
         nativeToScVal(campaignId, { type: 'u64' })
       );
 
@@ -242,14 +243,15 @@ export class StellarService {
       const simulated = await this.server.simulateTransaction(transaction);
 
       if (Soroban.Api.isSimulationSuccess(simulated)) {
-        return scValToNative(simulated.result!.retval);
+        const raw = scValToNative(simulated.result!.retval) as OnChainBuybackCampaign;
+        return raw;
       }
 
       throw new Error('Simulation failed');
     } catch (error) {
       throw this.createError(
         ErrorCode.CONTRACT_ERROR,
-        'Failed to get campaign',
+        'Failed to get buyback campaign',
         error instanceof Error ? error.message : undefined
       );
     }
@@ -297,7 +299,6 @@ export class StellarService {
       return false;
     }
   }
-}
 
   async fundTestAccount(publicKey: string): Promise<void> {
     try {
