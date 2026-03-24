@@ -2,7 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { ExecuteStepButton } from './ExecuteStepButton';
 import { StellarService } from '../../services/stellar.service';
 import { mapBuybackCampaign } from '../../services/mappers/buybackCampaignMapper';
-import type { BuybackCampaignModel } from '../../types/campaign';
+import type { BuybackCampaignModel, BuybackStepModel } from '../../types/campaign';
+
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? '';
 
 interface CampaignDashboardProps {
   campaignId: number;
