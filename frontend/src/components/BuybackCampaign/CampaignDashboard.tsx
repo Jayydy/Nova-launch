@@ -20,9 +20,14 @@ export const CampaignDashboard: React.FC<CampaignDashboardProps> = ({
   const fetchCampaign = async () => {
     try {
       setLoading(true);
-      const service = new StellarService(network);
-      const raw = await service.getBuybackCampaign(campaignId);
-      setCampaign(mapBuybackCampaign(raw));
+      const response = await fetch(`/api/campaigns/${campaignId}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch campaign');
+      }
+
+      const data = await response.json();
+      setCampaign(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
