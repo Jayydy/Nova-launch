@@ -200,8 +200,143 @@ describe('Chaos Tests', () => {
       { numRuns: 3 }  // timeouts are slow even at 200ms — keep runs minimal
     )
   }, 30_000)  // 30s timeout for the test itself
-  it.todo('Property 6: one log per invocation')
-  it.todo('Property 7: successful delivery has null error message')
-  it.todo('Property 8: log records event and payload')
-  it.todo('Property 9: parallel delivery isolation')
+  // Feature: webhook-delivery-chaos-tests, Property 6: one log per invocation
+  it('Property 6: one log per invocation regardless of outcome', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.oneof(
+          fc.constant(200),
+          fc.integer({ min: 400, max: 499 }),
+          fc.integer({ min: 500, max: 599 })
+        ),
+        async (statusCode) => {
+          const is5xx = statusCode >= 500
+          if (is5xx) {
+            nock(BASE_URL).post('/hook').times(MAX_RETRIES).reply(statusCode)
+          } else {
+            nock(BASE_URL).post('/hook').reply(statusCode)
+          }
+          const sub = makeSubscription(`${BASE_URL}/hook`)
+          await service.deliverWebhook(sub, WebhookEventType.TOKEN_CREATED, eventData)
+
+          expect(vi.mocked(webhookService.logDelivery).mock.calls.length).toBe(1)
+
+          nock.cleanAll()
+          vi.mocked(webhookService.logDelivery).mockClear()
+          vi.mocked(webhookService.updateLastTriggered).mockClear()
+        }
+      ),
+      { numRuns: 20 }
+    )
+  })
+
+  // Feature: webhook-delivery-chaos-tests, Property 7: null error message on success
+  it('Property 7: successful delivery has null error message', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.integer({ min: 200, max: 299 }),
+        async (statusCode) => {
+          nock(BASE_URL).post('/hook').reply(statusCode)
+          const sub = makeSubscription(`${BASE_URL}/hook`)
+          await service.deliverWebhook(sub, WebhookEventType.TOKEN_CREATED, eventData)
+
+          const call = vi.mocked(webhookService.logDelivery).mock.calls[0]
+          expect(call[4]).toBe(true)    // success
+          expect(call[6]).toBeNull()    // errorMessage = null
+
+          nock.cleanAll()
+          vi.mocked(webhookService.logDelivery).mockClear()
+          vi.mocked(webhookService.updateLastTriggered).mockClear()
+        }
+      ),
+      { numRuns: 20 }
+    )
+  })
+
+  // Feature: webhook-delivery-chaos-tests, Property 8: log records event and payload
+  it('Property 8: log records the event type and a non-null payload', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.constantFrom(...Object.values(WebhookEventType)),
+        async (event) => {
+          nock(BASE_URL).post('/hook').reply(200)
+          const sub = makeSubscription(`${BASE_URL}/hook`)
+          await service.deliverWebhook(sub, event, eventData)
+
+          const call = vi.mocked(webhookService.logDelivery).mock.calls[0]
+          expect(call[1]).toBe(event)       // event type matches
+          expect(call[2]).not.toBeNull()    // payload is non-null
+
+          nock.cleanAll()
+          vi.mocked(webhookService.logDelivery).mockClear()
+          vi.mocked(webhookService.updateLastTriggered).mockClear()
+        }
+      ),
+      { numRuns: 20 }
+    )
+  })
+
+  // Feature: webhook-delivery-chaos-tests, Property 9: parallel delivery isolation
+  it('Property 9: parallel delivery isolation — one bad endpoint does not block others', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.integer({ min: 2, max: 4 }),
+        async (n) => {
+          // First subscription always 5xx, rest succeed
+          const badSub = makeSubscription(`${BASE_URL}/bad`)
+          const goodSubs = Array.from({ length: n - 1 }, (_, i) =>
+            makeSubscription(`${BASE_URL}/good-${i}`)
+          )
+          const allSubs = [badSub, ...goodSubs]
+
+          // Set up nock: bad endpoint fails all MAX_RETRIES times
+          nock(BASE_URL).post('/bad').times(MAX_RETRIES).reply(500)
+          // Good endpoints succeed
+          goodSubs.forEach((_, i) => {
+            nock(BASE_URL).post(`/good-${i}`).reply(200)
+          })
+
+          // Mock findMatchingSubscriptions to return our controlled set
+          vi.spyOn(webhookService, 'findMatchingSubscriptions').mockResolvedValue(allSubs)
+
+          await service.triggerEvent(WebhookEventType.TOKEN_CREATED, eventData)
+
+          // logDelivery called once per subscription
+          expect(vi.mocked(webhookService.logDelivery).mock.calls.length).toBe(n)
+
+          // Good subs all succeeded
+          const successCalls = vi.mocked(webhookService.logDelivery).mock.calls.filter(c => c[4] === true)
+          expect(successCalls.length).toBe(n - 1)
+
+          nock.cleanAll()
+          vi.mocked(webhookService.logDelivery).mockClear()
+          vi.mocked(webhookService.updateLastTriggered).mockClear()
+          vi.mocked(webhookService.findMatchingSubscriptions).mockRestore()
+        }
+      ),
+      { numRuns: 10 }
+    )
+  })
+})
+
+describe('Unit tests — concrete log shapes', () => {
+  it('14.1: exact log shape for a successful first-attempt delivery', async () => {
+    nock(BASE_URL).post('/hook').reply(200)
+    const sub = makeSubscription(`${BASE_URL}/hook`)
+
+    await service.deliverWebhook(sub, WebhookEventType.TOKEN_CREATED, eventData)
+
+    expect(webhookService.logDelivery).toHaveBeenCalledTimes(1)
+    const [subscriptionId, event, payload, statusCode, success, attempts, errorMessage] =
+      vi.mocked(webhookService.logDelivery).mock.calls[0]
+
+    expect(subscriptionId).toBe(sub.id)
+    expect(event).toBe(WebhookEventType.TOKEN_CREATED)
+    expect(payload).not.toBeNull()
+    expect(payload.event).toBe(WebhookEventType.TOKEN_CREATED)
+    expect(statusCode).toBe(200)
+    expect(success).toBe(true)
+    expect(attempts).toBe(1)
+    expect(errorMessage).toBeNull()
+  })
 })
