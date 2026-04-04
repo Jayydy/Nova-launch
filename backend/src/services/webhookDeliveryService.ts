@@ -6,7 +6,7 @@ import {
   WebhookEventData,
 } from "../types/webhook";
 import webhookService from "./webhookService";
-import { IntegrationMetrics } from "../../../monitoring/metrics/prometheus-config";
+import { IntegrationMetrics } from "../monitoring/metrics/prometheus-config";
 
 const TIMEOUT_MS = parseInt(process.env.WEBHOOK_TIMEOUT_MS || "5000");
 const MAX_RETRIES = parseInt(process.env.WEBHOOK_MAX_RETRIES || "3");
@@ -62,7 +62,7 @@ export class WebhookDeliveryService {
       'X-Correlation-Id': cid,
     };
     // Include originating tx hash if present in data
-    const txHash = (data as Record<string, unknown>).transactionHash as string | undefined;
+    const txHash = (data as unknown as Record<string, unknown>).transactionHash as string | undefined;
     if (txHash) extraHeaders['X-Tx-Hash'] = txHash;
 
     let lastError: string | null = null;

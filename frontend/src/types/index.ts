@@ -179,4 +179,13 @@ export interface RecurringPaymentFilters {
     search?: string;
 }
 
+export interface VaultProjection {
+    streamId: number;
+    creator: string;
+    recipient: string;
+    amount: string;
+    status: string;
+    createdAt: string | number | Date;
+}
+
 export * from './governance';

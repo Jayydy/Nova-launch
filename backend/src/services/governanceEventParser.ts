@@ -243,17 +243,13 @@ export class GovernanceEventParser {
           gasUsed: event.gasUsed ? BigInt(event.gasUsed) : null,
           txHash: event.txHash,
           executedAt: event.timestamp,
-          errorCode: errorDetails?.errorCode,
-          errorMessage: errorDetails?.message,
-          errorDetails: errorDetails?.details,
         },
-        update: {}, // no-op on replay
       });
 
       await this.prisma.proposal.update({
         where: { id: proposal.id },
         data: {
-          status: event.success ? ProposalStatus.EXECUTED : ProposalStatus.FAILED,
+          status: event.success ? ProposalStatus.EXECUTED : ProposalStatus.REJECTED,
           executedAt: event.timestamp,
         },
       });

@@ -16,28 +16,12 @@ import {
   isRetryableError,
   sleep
 } from "../stellar-service-integration/rate-limiter";
-import { IntegrationMetrics } from "../../../monitoring/metrics/prometheus-config";
+import { IntegrationMetrics } from "../monitoring/metrics/prometheus-config";
 
 const _env = validateEnv();
 const HORIZON_URL = _env.STELLAR_HORIZON_URL;
 const FACTORY_CONTRACT_ID = _env.FACTORY_CONTRACT_ID;
 
-// Fail fast at module load: an empty or malformed contract ID means every
-// event poll will silently hit the wrong URL or return no results.
-if (!FACTORY_CONTRACT_ID) {
-  throw new Error(
-    'FACTORY_CONTRACT_ID is empty — StellarEventListener cannot start. ' +
-    'Set FACTORY_CONTRACT_ID to the deployed contract address for STELLAR_NETWORK="' +
-    _env.STELLAR_NETWORK + '".',
-  );
-}
-if (!/^C[A-Z2-7]{55}$/.test(FACTORY_CONTRACT_ID)) {
-  throw new Error(
-    `FACTORY_CONTRACT_ID is malformed: "${FACTORY_CONTRACT_ID}". ` +
-    'Expected a 56-character Soroban contract ID starting with "C". ' +
-    'Verify the address matches STELLAR_NETWORK="' + _env.STELLAR_NETWORK + '".',
-  );
-}
 const POLL_INTERVAL_MS = 5000; // Poll every 5 seconds
 
 interface StellarEvent {
@@ -77,6 +61,21 @@ export class StellarEventListener {
     if (this.isRunning) {
       console.warn("Event listener is already running");
       return;
+    }
+
+    if (!FACTORY_CONTRACT_ID) {
+      throw new Error(
+        'FACTORY_CONTRACT_ID is empty — StellarEventListener cannot start. ' +
+        'Set FACTORY_CONTRACT_ID to the deployed contract address for STELLAR_NETWORK="' +
+        _env.STELLAR_NETWORK + '".',
+      );
+    }
+    if (!/^C[A-Z2-7]{55}$/.test(FACTORY_CONTRACT_ID)) {
+      throw new Error(
+        `FACTORY_CONTRACT_ID is malformed: "${FACTORY_CONTRACT_ID}". ` +
+        'Expected a 56-character Soroban contract ID starting with "C". ' +
+        'Verify the address matches STELLAR_NETWORK="' + _env.STELLAR_NETWORK + '".',
+      );
     }
 
     // Load durable cursor before starting — resumes from last processed event

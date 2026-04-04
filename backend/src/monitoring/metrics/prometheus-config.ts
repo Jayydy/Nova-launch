@@ -22,39 +22,31 @@ export const httpRequestDuration = noopMetric;
 export const httpRequestTotal = noopMetric;
 export const httpRequestSize = noopMetric;
 export const httpResponseSize = noopMetric;
-
 export const contractInteractionDuration = noopMetric;
 export const contractInteractionTotal = noopMetric;
 export const contractGasUsed = noopMetric;
 export const tokenDeploymentTotal = noopMetric;
 export const tokenDeploymentDuration = noopMetric;
 export const tokenDeploymentFees = noopMetric;
-
 export const rpcCallDuration = noopMetric;
 export const rpcCallTotal = noopMetric;
 export const rpcErrorTotal = noopMetric;
-
 export const dbQueryDuration = noopMetric;
 export const dbQueryTotal = noopMetric;
 export const dbConnectionsActive = noopMetric;
 export const dbConnectionsIdle = noopMetric;
-
 export const walletInteractionTotal = noopMetric;
 export const walletConnectionDuration = noopMetric;
 export const walletSigningDuration = noopMetric;
-
 export const ipfsOperationDuration = noopMetric;
 export const ipfsOperationTotal = noopMetric;
 export const ipfsFileSize = noopMetric;
-
 export const activeUsers = noopMetric;
 export const revenueTotal = noopMetric;
 export const userConversionFunnel = noopMetric;
 export const featureUsage = noopMetric;
-
 export const errorTotal = noopMetric;
 export const errorRate = noopMetric;
-
 export const walletSubmissionTotal = noopMetric;
 export const txConfirmationDuration = noopMetric;
 export const eventIngestionLag = noopMetric;
@@ -62,54 +54,35 @@ export const eventsProcessedTotal = noopMetric;
 export const webhookDeliveryTotal = noopMetric;
 export const webhookRetryTotal = noopMetric;
 export const webhookDeliveryDuration = noopMetric;
-
 export const jobExecutionDuration = noopMetric;
 export const jobExecutionTotal = noopMetric;
 export const jobQueueSize = noopMetric;
-
 export const healthCheckStatus = noopMetric;
 export const healthCheckDuration = noopMetric;
 
 export class IntegrationMetrics {
-  static recordWalletSubmission(): void {}
-
-  static recordTxConfirmation(): void {}
-
-  static recordIngestionLag(): void {}
-
-  static recordEventProcessed(): void {}
-
-  static recordWebhookDelivery(): void {}
+  static recordWalletSubmission(..._args: any[]): void {}
+  static recordTxConfirmation(..._args: any[]): void {}
+  static recordIngestionLag(..._args: any[]): void {}
+  static recordEventProcessed(..._args: any[]): void {}
+  static recordWebhookDelivery(..._args: any[]): void {}
 }
 
 export class MetricsCollector {
-  static recordHttpRequest(): void {}
-
-  static recordContractInteraction(): void {}
-
-  static recordTokenDeployment(): void {}
-
-  static recordRPCCall(): void {}
-
-  static recordDatabaseQuery(): void {}
-
-  static recordWalletInteraction(): void {}
-
-  static recordIPFSOperation(): void {}
-
-  static recordBusinessMetric(): void {}
-
-  static recordError(): void {}
-
-  static recordBackgroundJob(): void {}
-
-  static recordHealthCheck(): void {}
-
-  static updateDatabaseConnections(): void {}
-
-  static updateJobQueueSize(): void {}
-
-  static updateErrorRate(): void {}
+  static recordHttpRequest(..._args: any[]): void {}
+  static recordContractInteraction(..._args: any[]): void {}
+  static recordTokenDeployment(..._args: any[]): void {}
+  static recordRPCCall(..._args: any[]): void {}
+  static recordDatabaseQuery(..._args: any[]): void {}
+  static recordWalletInteraction(..._args: any[]): void {}
+  static recordIPFSOperation(..._args: any[]): void {}
+  static recordBusinessMetric(..._args: any[]): void {}
+  static recordError(..._args: any[]): void {}
+  static recordBackgroundJob(..._args: any[]): void {}
+  static recordHealthCheck(..._args: any[]): void {}
+  static updateDatabaseConnections(..._args: any[]): void {}
+  static updateJobQueueSize(..._args: any[]): void {}
+  static updateErrorRate(..._args: any[]): void {}
 }
 
 export function createMetricsMiddleware() {

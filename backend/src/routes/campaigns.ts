@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { campaignProjectionService } from "../services/campaignProjectionService";
-import type { CampaignRecord, CampaignStats, CampaignExecutionsResponse } from "../contracts/apiSchemas";
 
 const router = Router();
 
@@ -11,7 +10,7 @@ const router = Router();
 router.get("/stats/:tokenId?", async (req, res) => {
   try {
     const { tokenId } = req.params;
-    const stats: CampaignStats = await campaignProjectionService.getCampaignStats(tokenId);
+    const stats = await campaignProjectionService.getCampaignStats(tokenId);
     res.json(stats);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch campaign stats" });
@@ -22,8 +21,7 @@ router.get("/stats/:tokenId?", async (req, res) => {
 router.get("/token/:tokenId", async (req, res) => {
   try {
     const { tokenId } = req.params;
-    const campaigns: CampaignRecord[] =
-      await campaignProjectionService.getCampaignsByToken(tokenId);
+    const campaigns = await campaignProjectionService.getCampaignsByToken(tokenId);
     res.json(campaigns);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch campaigns" });
@@ -34,8 +32,7 @@ router.get("/token/:tokenId", async (req, res) => {
 router.get("/creator/:creator", async (req, res) => {
   try {
     const { creator } = req.params;
-    const campaigns: CampaignRecord[] =
-      await campaignProjectionService.getCampaignsByCreator(creator);
+    const campaigns = await campaignProjectionService.getCampaignsByCreator(creator);
     res.json(campaigns);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch campaigns" });
@@ -49,12 +46,11 @@ router.get("/:campaignId/executions", async (req, res) => {
     const limit = parseInt(req.query.limit as string) || 50;
     const offset = parseInt(req.query.offset as string) || 0;
 
-    const result: CampaignExecutionsResponse =
-      await campaignProjectionService.getExecutionHistory(
-        campaignId,
-        limit,
-        offset
-      );
+    const result = await campaignProjectionService.getExecutionHistory(
+      campaignId,
+      limit,
+      offset
+    );
 
     res.json(result);
   } catch (error) {
@@ -66,8 +62,7 @@ router.get("/:campaignId/executions", async (req, res) => {
 router.get("/:campaignId", async (req, res) => {
   try {
     const campaignId = parseInt(req.params.campaignId);
-    const campaign: CampaignRecord | null =
-      await campaignProjectionService.getCampaignById(campaignId);
+    const campaign = await campaignProjectionService.getCampaignById(campaignId);
 
     if (!campaign) {
       return res.status(404).json({ error: "Campaign not found" });

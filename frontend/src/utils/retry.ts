@@ -29,6 +29,8 @@ export const BACKGROUND_RETRY_CONFIG: RetryConfig = {
   timeout: 120000,
 };
 
+export const DEFAULT_RETRY_CONFIG = USER_RETRY_CONFIG;
+
 /**
  * Calculate exponential backoff delay with jitter
  */
